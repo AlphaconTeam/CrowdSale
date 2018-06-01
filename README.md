@@ -1,2 +1,2 @@
-# CloudSale
-CloudSale Smart Contract
+# CrowdSale
+CrowdSale Smart Contract
