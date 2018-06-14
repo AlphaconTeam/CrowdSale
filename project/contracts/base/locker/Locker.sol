@@ -1,8 +1,8 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.24;
 
-import "../zeppelin/math/SafeMath.sol";
-import "../zeppelin/ownership/Ownable.sol";
-import "../zeppelin/token/ERC20/SafeERC20.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/SafeERC20.sol";
 
 /**
  * @title Locker
@@ -96,9 +96,9 @@ contract Locker is Ownable {
   uint public initialBalance;
   uint public withdrawAmount; // total amount of tokens released
 
-  mapping (address => Beneficiary) beneficiaries;
-  mapping (address => Release) releases;  // beneficiary's lock
-  mapping (address => bool) locked; // whether beneficiary's lock is instantiated
+  mapping (address => Beneficiary) public beneficiaries;
+  mapping (address => Release) public releases;  // beneficiary's lock
+  mapping (address => bool) public locked; // whether beneficiary's lock is instantiated
 
   uint public numBeneficiaries;
   uint public numLocks;
@@ -114,6 +114,10 @@ contract Locker is Ownable {
     require(beneficiaries[_addr].ratio > 0);
     _;
   }
+
+  event StateChanged(State _state);
+  event Locked(address indexed _beneficiary, bool _isStraight);
+  event Released(address indexed _beneficiary, uint256 _amount);
 
   function Locker(address _token, uint _coeff, address[] _beneficiaries, uint[] _ratios) public {
     require(_token != address(0));
@@ -148,6 +152,16 @@ contract Locker is Ownable {
 
     // set locker as active state
     state = State.Active;
+    emit StateChanged(state);
+  }
+
+  function getReleaseType(address _beneficiary)
+    public
+    view
+    onlyBeneficiary(_beneficiary)
+    returns (bool)
+  {
+    return releases[_beneficiary].isStraight;
   }
 
   function getTotalLockedAmounts(address _beneficiary)
@@ -187,6 +201,7 @@ contract Locker is Ownable {
     onlyBeneficiary(_beneficiary)
   {
     require(!locked[_beneficiary]);
+    require(_releaseRatios.length != 0);
     require(_releaseRatios.length == _releaseTimes.length);
 
     uint i;
@@ -212,20 +227,17 @@ contract Locker is Ownable {
     releases[_beneficiary].isStraight = _isStraight;
 
     // copy array of uint
-    releases[_beneficiary].releaseTimes = new uint[](len);
-    releases[_beneficiary].releaseRatios = new uint[](len);
-
-    for (i = 0; i < len; i++) {
-      releases[_beneficiary].releaseTimes[i] = _releaseTimes[i];
-      releases[_beneficiary].releaseRatios[i] = _releaseRatios[i];
-    }
+    releases[_beneficiary].releaseTimes = _releaseTimes;
+    releases[_beneficiary].releaseRatios = _releaseRatios;
 
     // lock beneficiary
     locked[_beneficiary] = true;
+    emit Locked(_beneficiary, _isStraight);
 
     //  if all beneficiaries locked, change Locker state to change
     if (numLocks == numBeneficiaries) {
       state = State.Ready;
+      emit StateChanged(state);
     }
   }
 
@@ -247,9 +259,11 @@ contract Locker is Ownable {
 
     if (withdrawAmount == initialBalance) {
       state = State.Drawn;
+      emit StateChanged(state);
     }
 
     token.transfer(msg.sender, releasableAmount);
+    emit Released(msg.sender, releasableAmount);
   }
 
   function getReleasableAmount(address _beneficiary) internal view returns (uint) {

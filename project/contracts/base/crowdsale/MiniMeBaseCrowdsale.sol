@@ -1,7 +1,7 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.24;
 
 import "./BaseCrowdsale.sol";
-import "../minime/MiniMeToken.sol";
+import "minimetoken/contracts/MiniMeToken.sol";
 import "../token/NoMintMiniMeToken.sol";
 
 contract MiniMeBaseCrowdsale is BaseCrowdsale {
@@ -29,5 +29,9 @@ contract MiniMeBaseCrowdsale is BaseCrowdsale {
   function finishMinting() internal returns (bool) {
     require(NoMintMiniMeToken(token).finishMinting());
     return true;
+  }
+
+  function getTokenAddress() internal returns (address) {
+    return address(token);
   }
 }

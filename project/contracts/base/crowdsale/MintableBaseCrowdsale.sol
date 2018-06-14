@@ -1,7 +1,7 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.24;
 
 import "./BaseCrowdsale.sol";
-import "../zeppelin/token/MintableToken.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/MintableToken.sol";
 
 contract MintableBaseCrowdsale is BaseCrowdsale {
 
@@ -28,5 +28,9 @@ contract MintableBaseCrowdsale is BaseCrowdsale {
   function finishMinting() internal returns (bool) {
     require(token.finishMinting());
     return true;
+  }
+
+  function getTokenAddress() internal returns (address) {
+    return address(token);
   }
 }

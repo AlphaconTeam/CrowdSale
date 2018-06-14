@@ -1,8 +1,8 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.24;
 
-import "../zeppelin/math/SafeMath.sol";
-import "../zeppelin/ownership/Ownable.sol";
-import "../zeppelin/token/ERC20/ERC20.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20Basic.sol";
 
 /**
  * @title HolderBase
@@ -12,7 +12,8 @@ import "../zeppelin/token/ERC20/ERC20.sol";
 contract HolderBase is Ownable {
   using SafeMath for uint256;
 
-  uint256 public ratioCoeff;
+  uint8 public constant MAX_HOLDERS = 64; // TODO: tokyo-input should verify # of holders
+  uint256 public coeff;
   bool public distributed;
   bool public initialized;
 
@@ -23,9 +24,11 @@ contract HolderBase is Ownable {
 
   Holder[] public holders;
 
-  function HolderBase(uint256 _ratioCoeff) public {
-    require(_ratioCoeff != 0);
-    ratioCoeff = _ratioCoeff;
+  event Distributed();
+
+  function HolderBase(uint256 _coeff) public {
+    require(_coeff != 0);
+    coeff = _coeff;
   }
 
   function getHolderCount() public view returns (uint256) {
@@ -35,15 +38,22 @@ contract HolderBase is Ownable {
   function initHolders(address[] _addrs, uint96[] _ratios) public onlyOwner {
     require(!initialized);
     require(holders.length == 0);
+    require(_addrs.length != 0);
+    require(_addrs.length <= MAX_HOLDERS);
     require(_addrs.length == _ratios.length);
+
     uint256 accRatio;
 
     for(uint8 i = 0; i < _addrs.length; i++) {
-      holders.push(Holder(_addrs[i], _ratios[i]));
-      accRatio = accRatio.add(uint96(_ratios[i]));
+      if (_addrs[i] != address(0)) {
+        // address will be 0x00 in case of "crowdsale".
+        holders.push(Holder(_addrs[i], _ratios[i]));
+      }
+
+      accRatio = accRatio.add(uint256(_ratios[i]));
     }
 
-    require(accRatio <= ratioCoeff);
+    require(accRatio <= coeff);
 
     initialized = true;
   }
@@ -54,31 +64,36 @@ contract HolderBase is Ownable {
    * function of RefundVault contract.
    */
   function distribute() internal {
-    require(!distributed);
-    require(this.balance > 0);
+    require(!distributed, "Already distributed");
     uint256 balance = this.balance;
+
+    require(balance > 0, "No ether to distribute");
     distributed = true;
 
     for (uint8 i = 0; i < holders.length; i++) {
-      uint256 holderAmount = balance.mul(uint256(holders[i].ratio)).div(ratioCoeff);
+      uint256 holderAmount = balance.mul(uint256(holders[i].ratio)).div(coeff);
 
       holders[i].addr.transfer(holderAmount);
     }
+
+    emit Distributed(); // A single log to reduce gas
   }
 
   /**
    * @dev Distribute ERC20 token to `holder`s according to ratio.
    */
-  function distribute(ERC20 token) internal {
-    require(!distributed);
-    require(this.balance > 0);
-    uint256 balance = token.balanceOf(this);
+  function distributeToken(ERC20Basic _token, uint256 _targetTotalSupply) internal {
+    require(!distributed, "Already distributed");
     distributed = true;
 
     for (uint8 i = 0; i < holders.length; i++) {
-      uint256 holderAmount = balance.mul(uint256(holders[i].ratio)).div(ratioCoeff);
-
-      token.transfer(holders[i].addr, holderAmount);
+      uint256 holderAmount = _targetTotalSupply.mul(uint256(holders[i].ratio)).div(coeff);
+      deliverTokens(_token, holders[i].addr, holderAmount);
     }
+
+    emit Distributed(); // A single log to reduce gas
   }
+
+  // Override to distribute tokens
+  function deliverTokens(ERC20Basic _token, address _beneficiary, uint256 _tokens) internal {}
 }

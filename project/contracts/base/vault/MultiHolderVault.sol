@@ -1,7 +1,7 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.24;
 
-import "../zeppelin/math/SafeMath.sol";
-import "../zeppelin/crowdsale/RefundVault.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/crowdsale/distribution/utils/RefundVault.sol";
 import "../common/HolderBase.sol";
 
 /**
@@ -19,7 +19,7 @@ contract MultiHolderVault is HolderBase, RefundVault {
 
   function close() public onlyOwner {
     require(state == State.Active);
-    require(wallet != 0x0 || initialized);
+    require(initialized);
 
     super.distribute(); // distribute ether to holders
     super.close(); // transfer remaining ether to wallet

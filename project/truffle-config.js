@@ -6,11 +6,13 @@ require("dotenv").config();
 
 const mnemonic = process.env.MNEMONIC || "onther tokyo onther tokyo onther tokyo onther tokyo onther tokyo onther tokyo";
 
-const ropstenProviderUrl = "https://ropsten.infura.io";
-const mainnetProviderUrl = "https://api.myetherapi.com/eth";
+const ropstenProviderUrl = "https://ropsten.infura.io/dYoag1aYCgtWEvSBNQWK";
+const mainnetProviderUrl = "https://mainnet.infura.io/dYoag1aYCgtWEvSBNQWK";
+// const ropstenProviderUrl = "https://ropsten.infura.io";
+// const mainnetProviderUrl = "https://api.myetherapi.com/eth";
 
-const providerRopsten = new HDWalletProvider(mnemonic, ropstenProviderUrl, 0, 50);
-const providerMainnet = new HDWalletProvider(mnemonic, mainnetProviderUrl, 0, 50);
+const providerRopsten = () => new HDWalletProvider(mnemonic, ropstenProviderUrl, 0, 50);
+const providerMainnet = () => new HDWalletProvider(mnemonic, mainnetProviderUrl, 0, 50);
 
 module.exports = {
   networks: {
@@ -37,7 +39,7 @@ module.exports = {
       network_id: 1,
       provider: providerMainnet,
       gas: 4200000,
-      gasPrice: 50e9,
+      gasPrice: 25e9,
     },
   },
   solc: {
